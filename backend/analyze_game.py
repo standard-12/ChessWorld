@@ -21,31 +21,40 @@ except Exception as e:
 
 STOCKFISH_PATH = os.getenv("STOCKFISH_PATH", "/usr/bin/stockfish")
 
-def score_to_cp_for_side(score, side):
-    """Convert a python-chess Score to centipawns from 'side' perspective.
+def score_to_cp_white_pov(score):
+    """Convert a python-chess Score to centipawns from WHITE's perspective.
        If mate detected, returns large magnitude with sign.
     """
     if score is None:
         return 0
     try:
         if score.is_mate():
-            m = score.pov(chess.WHITE).mate()
-            # m positive => white mates, negative => black mates
-            # But we want from side's perspective:
-            # use sign * large value
-            side_mate = score.pov(side).mate()
-            if side_mate is None:
+            # Get mate in moves from white's perspective
+            mate_moves = score.pov(chess.WHITE).mate()
+            if mate_moves is None:
                 return 100000
-            return 100000 if side_mate > 0 else -100000
+            # Positive mate = white is mating, negative = black is mating
+            return 100000 if mate_moves > 0 else -100000
         else:
-            # score.pov(side).score() gives centipawn from that side
-            return score.pov(side).score(mate_score=100000)
+            # Get centipawn score from white's perspective
+            return score.pov(chess.WHITE).score(mate_score=100000)
     except Exception:
         # Fallback
         try:
             return score.white().score(mate_score=100000)
         except Exception:
             return 0
+
+def format_eval(cp_value):
+    """Format evaluation for display"""
+    if cp_value >= 100000:
+        return "M+"
+    elif cp_value <= -100000:
+        return "M-"
+    else:
+        # Convert centipawns to pawns
+        pawns = cp_value / 100.0
+        return f"{pawns:+.2f}"
 
 def analyze_pgn(pgn_text, depth):
     pgn_io = io.StringIO(pgn_text)
@@ -76,43 +85,50 @@ def analyze_pgn(pgn_text, depth):
             ply_count += 1
             before = board.copy()
             mover = before.turn  # True for white to move
+            
             try:
-                # get engine's best move from 'before' position
+                # Get engine's best move from 'before' position
                 best = engine.play(before, chess.engine.Limit(depth=depth))
                 best_move = best.move
             except Exception:
                 best_move = None
 
-            # Evaluate position after best move (from mover's perspective)
+            # Evaluate position after best move (from WHITE's perspective)
             try:
                 if best_move is not None:
                     tmp = before.copy()
                     tmp.push(best_move)
                     best_info = engine.analyse(tmp, chess.engine.Limit(depth=depth))
-                    cp_best_for_side = score_to_cp_for_side(best_info.get("score"), mover)
+                    cp_best_white_pov = score_to_cp_white_pov(best_info.get("score"))
                 else:
                     # fallback: evaluate before position as 'best'
                     info_before = engine.analyse(before, chess.engine.Limit(depth=depth))
-                    cp_best_for_side = score_to_cp_for_side(info_before.get("score"), mover)
+                    cp_best_white_pov = score_to_cp_white_pov(info_before.get("score"))
             except Exception:
-                cp_best_for_side = 0.0
+                cp_best_white_pov = 0.0
 
-            # apply the actual played move
+            # Apply the actual played move
             try:
                 board.push(move)
             except Exception:
                 # invalid move
                 break
 
-            # Evaluate position after played move
+            # Evaluate position after played move (from WHITE's perspective)
             try:
                 info_played = engine.analyse(board, chess.engine.Limit(depth=depth))
-                cp_played_for_side = score_to_cp_for_side(info_played.get("score"), mover)
+                cp_played_white_pov = score_to_cp_white_pov(info_played.get("score"))
             except Exception:
-                cp_played_for_side = 0.0
+                cp_played_white_pov = 0.0
 
-            # Centipawn loss from mover's perspective: best - played
-            cp_loss = cp_best_for_side - cp_played_for_side
+            # Calculate centipawn loss from the mover's perspective
+            # If white moved: loss = best - played (both from white's POV)
+            # If black moved: loss = played - best (because black wants negative scores)
+            if mover == chess.WHITE:
+                cp_loss = cp_best_white_pov - cp_played_white_pov
+            else:
+                cp_loss = cp_played_white_pov - cp_best_white_pov
+            
             if cp_loss < 0:
                 cp_loss = 0  # player did as good or better than engine's best
             total_cp_loss += cp_loss
@@ -129,11 +145,23 @@ def analyze_pgn(pgn_text, depth):
                 inaccuracies += 1
 
             san = before.san(move)
+            
+            # Store best move in SAN notation
+            best_move_san = ""
+            if best_move is not None:
+                try:
+                    best_move_san = before.san(best_move)
+                except:
+                    best_move_san = str(best_move)
+            
             moves_out.append({
                 "ply": ply_count,
                 "san": san,
                 "deltaCp": int(round(cp_loss)),
-                "tag": tag
+                "tag": tag,
+                "evalAfterPlayed": format_eval(cp_played_white_pov),
+                "evalAfterBest": format_eval(cp_best_white_pov),
+                "bestMove": best_move_san
             })
     finally:
         try:

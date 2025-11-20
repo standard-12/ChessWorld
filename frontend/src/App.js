@@ -45,9 +45,10 @@ export default function App() {
 
   return (
     <div className="container">
-      <h1>Chessworld — Internship Assignment (demo)</h1>
+      <h1>Analyze Your Games</h1>
       <div className="fetch-row">
-        <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Chess.com username" />
+         <label htmlFor="username">Enter Your Chess.com Username : </label>
+         <input id="username" value={username} onChange={e => setUsername(e.target.value)}  placeholder="Chess.com username" />
         <button onClick={fetchGames} disabled={loading}>{loading ? "Loading..." : "Fetch"}</button>
       </div>
 
@@ -65,8 +66,8 @@ export default function App() {
             return (
               <tr key={idx}>
                 <td>{opp}</td>
-                <td>{result}</td>
-                <td>{g.time_class}</td>
+                <td>{capitalize(result)}</td>
+                <td>{capitalize(g.time_class)}</td>
                 <td>{opening}</td>
                 <td>{date}</td>
                 <td><button onClick={() => viewGame(g)}>View</button></td>
@@ -81,4 +82,9 @@ export default function App() {
       )}
     </div>
   );
+
+  function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 }
