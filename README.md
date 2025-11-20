@@ -1,4 +1,3 @@
-# Chessworld — Internship Assignment
 
 ## What
 Small web app: fetch a Chess.com user's recent games, view a game interactively and run Stockfish analysis (inaccuracies/mistakes/blunders).
