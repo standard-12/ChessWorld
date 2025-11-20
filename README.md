@@ -11,20 +11,19 @@ Small web app: fetch a Chess.com user's recent games, view a game interactively 
   - Or download binary and note its path.
 
 ## Setup Backend
-   cd backend
-   npm install
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   export STOCKFISH_PATH=/path/to/stockfish (or create a .env file with config details)
-   npm start
+   - cd backend
+   - npm install
+   - python3 -m venv .venv
+   - source .venv/bin/activate
+   - pip install -r requirements.txt
+   - export STOCKFISH_PATH=/path/to/stockfish (or create a .env file with config details)
+   - npm start
 
 ## Setup frontend
-cd frontend
-npm install
-npm start
-
-Open http://localhost:3000
+   - cd frontend
+   - npm install
+   - npm start
+   - Open localhost:3000
 
 ## Notes
 - Backend `/api/analyze` uses Stockfish. Adjust `depth` param to trade accuracy vs time.
