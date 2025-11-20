@@ -43,6 +43,22 @@ export default function App() {
     setSelectedPgn(game.pgn);
   }
 
+function extractOpening(url) {
+  if (!url) return null;
+  // Get part after /openings/
+  let part = url.split("/openings/")[1];
+  if (!part) return null;
+  // Remove everything after the first dot (".Nf3")
+  part = part.split(".")[0];
+  // Split by dashes
+  const parts = part.split("-");
+  // Filter out pure numbers (like 3)
+  const filtered = parts.filter(segment => !/^\d+$/.test(segment));
+  // Join into readable words
+  return filtered.join(" ");
+}
+
+
   return (
     <div className="container">
       <h1>Analyze Your Games</h1>
@@ -61,7 +77,7 @@ export default function App() {
             const userIsWhite = (g.white && g.white.username && g.white.username.toLowerCase() === username.toLowerCase());
             const opp = userIsWhite ? g.black.username : g.white.username;
             const result = userIsWhite ? g.white.result : g.black.result;
-            const opening = (g.pgn && g.pgn.includes("Opening")) ? "" : (g.opening?.name || "");
+            const opening = extractOpening(g.eco);
             const date = new Date(g.end_time * 1000).toLocaleString();
             return (
               <tr key={idx}>
